@@ -28,8 +28,8 @@ def process_tickets(input_csv_path: str, output_csv_path: str):
         print(f"Failed to load CSV: {e}")
         return
 
-    # Initialize Retriever and Agent
-    retriever = get_retriever(data_dir="../data", persist_directory="./chroma_db")
+    # Initialize Vector Store and Agent
+    vectorstore = get_retriever(data_dir="../data", persist_directory="./chroma_db")
     agent = get_agent()
 
     results = []
@@ -47,9 +47,26 @@ def process_tickets(input_csv_path: str, output_csv_path: str):
             
         print(f"[{index+1}/{len(df)}] Analyzing ticket for {company}...")
         
-        # 2. Retrieval
+        # 2. Filtered Retrieval
+        # Map company name to metadata filter
+        comp_key = company.lower()
+        if "visa" in comp_key:
+            filter_val = "visa"
+        elif "claude" in comp_key:
+            filter_val = "claude"
+        elif "hackerrank" in comp_key:
+            filter_val = "hackerrank"
+        else:
+            filter_val = None
+            
+        search_kwargs = {"k": 6}
+        if filter_val:
+            search_kwargs["filter"] = {"company": filter_val}
+            
+        temp_retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
+        
         search_query = f"{company} support: {subject} {issue}"
-        docs = retriever.invoke(search_query)
+        docs = temp_retriever.invoke(search_query)
         context = "\n\n".join([f"Source: {d.metadata.get('source', 'Unknown')}\n{d.page_content}" for d in docs])
         
         # 3. Agent Prediction
@@ -89,7 +106,7 @@ def process_tickets(input_csv_path: str, output_csv_path: str):
     print(f"Finished! Wrote {len(out_df)} predictions to {output_csv_path}")
 
 if __name__ == "__main__":
-    # Final comparison run on the sample support tickets
-    input_file = "../support_tickets/sample_support_tickets.csv"
+    # Final production run on the full support tickets dataset
+    input_file = "../support_tickets/support_tickets.csv"
     output_file = "../support_tickets/output.csv"
     process_tickets(input_file, output_file)

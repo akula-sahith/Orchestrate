@@ -8,7 +8,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 def get_retriever(data_dir: str = "../data", persist_directory: str = "./chroma_db"):
     """
     Initializes or loads a local Chroma vector store from the markdown corpus.
-    Returns a retriever object for semantic search.
+    Returns a Chroma vector store for semantic search.
     """
     # Use HuggingFace local embeddings
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -16,8 +16,7 @@ def get_retriever(data_dir: str = "../data", persist_directory: str = "./chroma_
     # Check if the vector database already exists to avoid re-indexing
     if os.path.exists(persist_directory) and os.listdir(persist_directory):
         print("Loading existing vector store from disk...")
-        vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
-        return vectorstore.as_retriever(search_kwargs={"k": 6})
+        return Chroma(persist_directory=persist_directory, embedding_function=embeddings)
         
     print("Building new vector store from markdown corpus. This may take a moment...")
     
@@ -31,6 +30,18 @@ def get_retriever(data_dir: str = "../data", persist_directory: str = "./chroma_
     docs = loader.load()
     print(f"Loaded {len(docs)} markdown files.")
     
+    # Add company metadata based on the directory structure
+    for doc in docs:
+        source = doc.metadata.get("source", "").lower()
+        if "visa" in source:
+            doc.metadata["company"] = "visa"
+        elif "claude" in source:
+            doc.metadata["company"] = "claude"
+        elif "hackerrank" in source:
+            doc.metadata["company"] = "hackerrank"
+        else:
+            doc.metadata["company"] = "unknown"
+    
     # Chunk the documents to fit into context windows better
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000, 
@@ -41,13 +52,11 @@ def get_retriever(data_dir: str = "../data", persist_directory: str = "./chroma_
     print(f"Created {len(splits)} text chunks.")
     
     # Create and persist the vector store
-    vectorstore = Chroma.from_documents(
+    return Chroma.from_documents(
         documents=splits, 
         embedding=embeddings, 
         persist_directory=persist_directory
     )
-    
-    return vectorstore.as_retriever(search_kwargs={"k": 6})
 
 if __name__ == "__main__":
     # Quick test if run directly
