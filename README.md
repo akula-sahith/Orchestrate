@@ -19,7 +19,7 @@ The agent follows a **Single-Agent RAG (Retrieval-Augmented Generation)** archit
 
 ## 🛠️ Tech Stack
 
-- **LLM**: `gemini-2.5-pro` (High reasoning quality, structured output support).
+- **LLM**: `gemini-1.5-flash` (High reasoning quality, structured output support).
 - **Embeddings**: `all-MiniLM-L6-v2` (Local HuggingFace embeddings) — used to ensure offline stability and avoid API rate limits during bulk processing.
 - **Vector Store**: `ChromaDB` (Local persistence).
 - **Orchestration**: `LangChain` & `Pydantic`.
